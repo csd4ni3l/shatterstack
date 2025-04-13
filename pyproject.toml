@@ -1,0 +1,10 @@
+[project]
+name = "ShatterStack"
+version = "0.1.0"
+description = "A game where you have to place shapes in lines to get points!"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = ["arcade", "pillow>=11.0.0", "pypresence>=4.3.0"]
+
+[tool.uv.sources]
+arcade = { git = "https://github.com/pythonarcade/arcade.git", rev = "gui/controller" }

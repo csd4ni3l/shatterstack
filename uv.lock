@@ -136,14 +136,12 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "arcade" },
-    { name = "pillow" },
     { name = "pypresence" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "arcade", git = "https://github.com/pythonarcade/arcade.git?rev=gui%2Fcontroller" },
-    { name = "pillow", specifier = ">=11.0.0" },
     { name = "pypresence", specifier = ">=4.3.0" },
 ]
 

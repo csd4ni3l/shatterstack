@@ -1,8 +1,8 @@
-import arcade, arcade.gui, random, math
+import arcade, arcade.gui, random, math, json
 
 from game.sprites import Shape
 from utils.constants import SHAPES, CELL_SIZE, ROWS, COLS, menu_background_color, OUTLINE_WIDTH, COLORS, button_style
-from utils.preload import button_texture, button_hovered_texture
+from utils.preload import button_texture, button_hovered_texture, click_sound
 
 class Game(arcade.gui.UIView):
     def __init__(self, pypresence_client):
@@ -28,9 +28,13 @@ class Game(arcade.gui.UIView):
 
         self.anchor = self.add_widget(arcade.gui.UIAnchorLayout())
 
-    def main_exit(self):
-        from menus.main import Main
+        with open("settings.json", "r") as file:
+            self.settings_dict = json.load(file)
 
+    def main_exit(self):
+        self.window.set_mouse_visible(True)
+
+        from menus.main import Main
         self.window.show_view(Main())
 
     def on_mouse_motion(self, x, y, dx, dy):
@@ -40,16 +44,16 @@ class Game(arcade.gui.UIView):
     def on_show_view(self):
         super().on_show_view()
 
-        arcade.set_background_color(arcade.color.BLACK)
-
         self.setup_grid()
 
         self.mouse_shape = Shape(0, 0, self.shape_to_place, self.shape_color, self.mouse_shape_list)
         self.next_shape_ui = Shape(self.window.width - (CELL_SIZE * 4), self.window.height - (CELL_SIZE * 4), self.next_shape_to_place, self.next_shape_color, self.shape_list)
 
         self.score_label = self.anchor.add(arcade.gui.UILabel(text="Score: 0", font_name="Protest Strike", font_size=24), anchor_x="center", anchor_y="top")
-        self.back_to_menu_button = self.anchor.add(arcade.gui.UITextureButton(text="Back to Main Menu", texture=button_texture, texture_hovered=button_hovered_texture, width=self.window.width / 3, height=100, style=button_style), anchor_x="center", anchor_y="bottom")
-        self.back_to_menu_button.on_click = lambda event: self.main_exit()
+
+        self.back_button = arcade.gui.UITextureButton(texture=button_texture, texture_hovered=button_hovered_texture, text='<--', style=button_style, width=100, height=50)
+        self.back_button.on_click = lambda e: self.main_exit()
+        self.anchor.add(self.back_button, anchor_x="left", anchor_y="top", align_x=5, align_y=-5)
 
         self.pypresence_client.update(state='In Game', details='Shattering Stacks', start=self.pypresence_client.start_time)
 
@@ -66,7 +70,7 @@ class Game(arcade.gui.UIView):
                 self.shape_list.append(arcade.SpriteSolidColor(
                     width=CELL_SIZE,
                     height=CELL_SIZE,
-                    color=menu_background_color,
+                    color=arcade.color.GRAY,
                     center_x=center_x,
                     center_y=center_y
                 ))
@@ -138,6 +142,9 @@ class Game(arcade.gui.UIView):
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int) -> bool | None:
         super().on_mouse_press(x, y, button, modifiers)
+
+        if self.settings_dict.get("sfx", True):
+            click_sound.play(volume=self.settings_dict.get("sfx_volume", 50) / 100)
 
         grid_col = math.ceil((x - self.start_x + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
         grid_row = math.ceil((y - self.start_y + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))

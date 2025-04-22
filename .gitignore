@@ -181,3 +181,4 @@ test*.py
 .zed/
 logs/
 logs
+settings.json

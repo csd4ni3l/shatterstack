@@ -41,9 +41,18 @@ class Main(arcade.gui.UIView):
     def on_show_view(self):
         super().on_show_view()
 
+        self.title_label = self.box.add(arcade.gui.UILabel(text="ShatterStack", font_name="Protest Strike", font_size=48))
+
         self.play_button = self.box.add(arcade.gui.UITextureButton(text="Play", texture=button_texture, texture_hovered=button_hovered_texture, width=self.window.width / 2, height=150, style=button_style))
         self.play_button.on_click = lambda event: self.play()
+
+        self.settings_button = self.box.add(arcade.gui.UITextureButton(text="Settings", texture=button_texture, texture_hovered=button_hovered_texture, width=self.window.width / 2, height=150, style=button_style))
+        self.settings_button.on_click = lambda event: self.settings()
 
     def play(self):
         from game.play import Game
         self.window.show_view(Game(self.pypresence_client))
+
+    def settings(self):
+        from menus.settings import Settings
+        self.window.show_view(Settings(self.pypresence_client))

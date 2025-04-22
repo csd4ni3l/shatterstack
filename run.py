@@ -7,8 +7,7 @@ import logging, datetime, os, json, sys, arcade
 from utils.utils import get_closest_resolution, print_debug_info, on_exception
 from utils.constants import log_dir, menu_background_color
 from menus.main import Main
-import utils.preload # type: ignore
-from arcade.experimental.controller_window import ControllerWindow
+from utils.preload import theme_sound # type: ignore # needed for preload
 
 sys.excepthook = on_exception
 
@@ -56,7 +55,24 @@ else:
     vsync = True
     fps_limit = 0
 
-window = ControllerWindow(width=resolution[0], height=resolution[1], title='ShatterStack', samples=antialiasing, antialiasing=antialiasing > 0, fullscreen=fullscreen, vsync=vsync, resizable=False, style=style)
+    settings = {
+        "music": True,
+        "music_volume": 50,
+        "resolution": f"{resolution[0]}x{resolution[1]}",
+        "antialiasing": "4x MSAA",
+        "window_mode": "Windowed",
+        "vsync": True,
+        "fps_limit": 60,
+        "discord_rpc": True
+    }
+
+    with open("settings.json", "w") as file:
+        file.write(json.dumps(settings))
+
+if settings.get("music", True):
+    theme_sound.play(volume=settings.get("music_volume", 50) / 100, loop=True)
+
+window = arcade.Window(width=resolution[0], height=resolution[1], title='Game Of Life', samples=antialiasing, antialiasing=antialiasing > 0, fullscreen=fullscreen, vsync=vsync, resizable=False, style=style)
 
 if vsync:
     window.set_vsync(True)
@@ -70,6 +86,8 @@ elif not fps_limit == 0:
 else:
     window.set_update_rate(1 / 99999999)
     window.set_draw_rate(1 / 99999999)
+
+arcade.set_background_color(menu_background_color)
 
 print_debug_info()
 main = Main()

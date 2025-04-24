@@ -104,7 +104,7 @@ class Game(arcade.gui.UIView):
 
                 for col in range(COLS):
                     self.occupied[row_idx][col] = 0
-                    self.score += 10
+                    self.score += 25
 
         for col in range(COLS):
             column = [row[col] for row in self.occupied.values()]

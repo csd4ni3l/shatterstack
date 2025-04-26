@@ -180,7 +180,7 @@ class Settings(arcade.gui.UIView):
                     self.pypresence_client.close()
                     del self.pypresence_client
                     try:
-                        self.pypresence_client = pypresence.Presence(1363780625928028200)
+                        self.pypresence_client = pypresence.Presence(1360953272843632680)
                         self.pypresence_client.connect()
                         self.pypresence_client.update(state='In Settings', details='Modifying Settings', start=start_time)
                         self.pypresence_client.start_time = start_time

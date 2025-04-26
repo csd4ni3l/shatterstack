@@ -22,7 +22,7 @@ class Main(arcade.gui.UIView):
                 except:
                     asyncio.set_event_loop(asyncio.new_event_loop())
                 try:
-                    self.pypresence_client = pypresence.Presence(1363780625928028200)
+                    self.pypresence_client = pypresence.Presence(1360953272843632680)
                     self.pypresence_client.connect()
                     self.pypresence_client.start_time = time.time()
                 except:
@@ -33,7 +33,7 @@ class Main(arcade.gui.UIView):
                 # get start time from old object
                 start_time = copy.deepcopy(self.pypresence_client.start_time)
                 try:
-                    self.pypresence_client = pypresence.Presence(1363780625928028200)
+                    self.pypresence_client = pypresence.Presence(1360953272843632680)
                     self.pypresence_client.connect()
                     self.pypresence_client.start_time = start_time
                 except:

@@ -1,3 +1,4 @@
+import os
 import arcade, arcade.gui, random, math, json
 
 from game.sprites import Shape
@@ -24,6 +25,12 @@ class Game(arcade.gui.UIView):
         self.start_x = self.window.width / 2 - (COLS * (CELL_SIZE + OUTLINE_WIDTH)) / 2 + (CELL_SIZE / 2)
         self.start_y = self.window.height - (ROWS * (CELL_SIZE + OUTLINE_WIDTH)) - (CELL_SIZE / 2)
 
+        if os.path.exists("data.json"):
+            with open("data.json", "r") as file:
+                self.high_score = json.load(file)["high_score"]
+        else:
+            self.high_score = 0
+
         self.score = 0
 
         self.anchor = self.add_widget(arcade.gui.UIAnchorLayout())
@@ -33,6 +40,9 @@ class Game(arcade.gui.UIView):
 
     def main_exit(self):
         self.window.set_mouse_visible(True)
+
+        with open("data.json", "w") as file:
+            file.write(json.dumps({"high_score": self.high_score}))
 
         from menus.main import Main
         self.window.show_view(Main())
@@ -49,7 +59,10 @@ class Game(arcade.gui.UIView):
         self.mouse_shape = Shape(0, 0, self.shape_to_place, self.shape_color, self.mouse_shape_list)
         self.next_shape_ui = Shape(self.window.width - (CELL_SIZE * 4), self.window.height - (CELL_SIZE * 4), self.next_shape_to_place, self.next_shape_color, self.shape_list)
 
-        self.score_label = self.anchor.add(arcade.gui.UILabel(text="Score: 0", font_name="Protest Strike", font_size=24), anchor_x="center", anchor_y="top")
+        self.score_box = self.anchor.add(arcade.gui.UIBoxLayout(space_between=10, vertical=False), anchor_x="center", anchor_y="top")
+
+        self.score_label = self.score_box.add(arcade.gui.UILabel(text="Score: 0", font_name="Protest Strike", font_size=24))
+        self.high_score_label = self.score_box.add(arcade.gui.UILabel(text=f"High Score: {self.high_score}", font_name="Protest Strike", font_size=24))
 
         self.back_button = arcade.gui.UITextureButton(texture=button_texture, texture_hovered=button_hovered_texture, text='<--', style=button_style, width=100, height=50)
         self.back_button.on_click = lambda e: self.main_exit()
@@ -119,6 +132,9 @@ class Game(arcade.gui.UIView):
     def update_game(self):
         self.check_collisions()
         self.score_label.text = f"Score: {self.score}"
+        if self.score > self.high_score:
+            self.high_score = self.score
+            self.high_score_label.text = f"High Score: {self.high_score}"
         self.check_game_over()
 
     def check_game_over(self):

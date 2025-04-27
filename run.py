@@ -72,7 +72,7 @@ else:
 if settings.get("music", True):
     theme_sound.play(volume=settings.get("music_volume", 50) / 100, loop=True)
 
-window = arcade.Window(width=resolution[0], height=resolution[1], title='Game Of Life', samples=antialiasing, antialiasing=antialiasing > 0, fullscreen=fullscreen, vsync=vsync, resizable=False, style=style)
+window = arcade.Window(width=resolution[0], height=resolution[1], title='ShatterStack', samples=antialiasing, antialiasing=antialiasing > 0, fullscreen=fullscreen, vsync=vsync, resizable=False, style=style)
 
 if vsync:
     window.set_vsync(True)

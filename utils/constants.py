@@ -5,6 +5,7 @@ from arcade.gui.widgets.slider import UISliderStyle
 
 menu_background_color = (30, 30, 47)
 log_dir = 'logs'
+discord_presence_id = 1360953272843632680
 CELL_SIZE = 48
 ROWS = 14
 COLS = 14

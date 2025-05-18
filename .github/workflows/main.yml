@@ -30,7 +30,7 @@ jobs:
           nuitka-version: main
           script-name: run
           nofollow-import-to: "*tk*,_codecs,encodings,multiprocessing,gi"
-          include-data-dir: assets
+          include-data-dir: assets=assets
           include-data-files: CREDITS=CREDITS
           mode: standalone
           output-file: ShatterStack

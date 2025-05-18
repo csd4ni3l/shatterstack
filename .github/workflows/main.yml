@@ -28,7 +28,7 @@ jobs:
         uses: Nuitka/Nuitka-Action@main
         with:
           nuitka-version: main
-          script-name: run
+          script-name: run.py
           nofollow-import-to: "*tk*,_codecs,encodings,multiprocessing,gi"
           include-data-dir: assets=assets
           include-data-files: CREDITS=CREDITS

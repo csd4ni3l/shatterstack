@@ -45,13 +45,14 @@ jobs:
           if [ "${{ runner.os }}" = "Windows" ]; then
             powershell.exe -Command "Compress-Archive -Path 'build/run.dist/*' -DestinationPath 'zip_output/ShatterStack-${{ runner.os }}.zip'"
           else
-            zip -r "zip_output/ShatterStack-${{ runner.os }}.zip" build/run.dist/*
+            cd build/run.dist
+            zip -r "../../zip_output/ShatterStack-${{ runner.os }}.zip" .
           fi
 
       - name: Upload Zipped Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ShatterStack-${{ runner.os }}
+          name: ShatterStack-${{ runner.os }}.zip
           path: zip_output/ShatterStack-${{ runner.os }}.zip
 
   release:

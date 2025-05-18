@@ -76,6 +76,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create the new release
-        run: gh release create latest downloads/**/ShatterStack-*.zip --title "Latest Build" --notes "Most recent multi-platform builds of ShatterStack" --prerelease
+        run: gh release create latest downloads/**/ShatterStack-*.zip --title "Latest Build" --notes "Most recent multi-platform builds of ShatterStack"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

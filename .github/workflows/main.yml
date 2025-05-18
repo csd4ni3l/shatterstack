@@ -39,9 +39,14 @@ jobs:
           output-file: ShatterStack
 
       - name: Zip Build Output
+        shell: bash
         run: |
-          mkdir -p zip_output
-          zip -r "zip_output/ShatterStack-${{ runner.os }}.zip" build/run.dist
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            powershell -Command "Compress-Archive -Path build\run.dist\* -DestinationPath zip_output\ShatterStack-${{ runner.os }}.zip"
+          else
+            mkdir -p zip_output
+            zip -r "zip_output/ShatterStack-${{ runner.os }}.zip" build/run.dist/*
+          fi
 
       - name: Upload Zipped Build Artifact
         uses: actions/upload-artifact@v4

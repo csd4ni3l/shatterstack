@@ -64,16 +64,13 @@ jobs:
         with:
           path: downloads
 
-      - name: Install GitHub CLI
-        uses: cli/cli-action@v2
-
       - name: Delete Old Release (if exists)
         continue-on-error: true
         run: gh release delete latest -y
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create New "Latest Build" Release
+      - name: Create the new release
         run: gh release create latest downloads/**/ShatterStack-*.zip --title "Latest Build" --notes "Most recent multi-platform builds of ShatterStack" --prerelease
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -54,7 +54,6 @@ jobs:
         with:
           name: ShatterStack-${{ runner.os }}.zip
           path: zip_output/ShatterStack-${{ runner.os }}.zip
-
   release:
     name: Create GitHub Release
     needs: build
@@ -63,20 +62,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
-          
+          fetch-depth: 0 
+  
       - name: Download All Zipped Builds
         uses: actions/download-artifact@v4
         with:
           path: downloads
-
+  
       - name: Delete Old Release (if exists)
         continue-on-error: true
         run: gh release delete latest -y
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+  
+      - name: Delete Git tag (if exists)
+        continue-on-error: true
+        run: |
+          git push origin :refs/tags/latest
+          git tag -d latest
+  
+      - name: Recreate Git tag at HEAD
+        run: |
+          git tag latest
+          git push origin latest
+  
       - name: Create the new release
         run: gh release create latest downloads/**/ShatterStack-*.zip --title "Latest Build" --notes "Most recent multi-platform builds of ShatterStack"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

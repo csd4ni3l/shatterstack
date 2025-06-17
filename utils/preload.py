@@ -5,3 +5,4 @@ button_hovered_texture = arcade.gui.NinePatchTexture(64 // 4, 64 // 4, 64 // 4, 
 
 theme_sound = arcade.Sound("assets/sound/music.ogg")
 click_sound = arcade.Sound("assets/sound/click.wav")
+break_sound = arcade.Sound("assets/sound/break.wav")

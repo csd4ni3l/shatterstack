@@ -82,7 +82,7 @@ class Settings(arcade.gui.UIView):
         self.value_layout.clear()
 
         for setting in settings[category]:
-            label = arcade.gui.UILabel(text=setting, font_name="Protest Strike", font_size=28, text_color=arcade.color.WHITE )
+            label = arcade.gui.UILabel(text=setting, font_name="Roboto", font_size=28, text_color=arcade.color.WHITE )
             self.key_layout.add(label)
 
             setting_dict = settings[category][setting]
@@ -196,18 +196,18 @@ class Settings(arcade.gui.UIView):
                     self.pypresence_client = FakePyPresence()
                     self.pypresence_client.start_time = start_time
 
-            self.ui_cleanup()
+        self.ui_cleanup()
 
-            self.ui = arcade.gui.UIManager()
-            self.ui.enable()
+        self.ui = arcade.gui.UIManager()
+        self.ui.enable()
 
-            self.create_layouts()
+        self.create_layouts()
 
-            self.back_button = arcade.gui.UITextureButton(texture=button_texture, texture_hovered=button_hovered_texture, text='<--', style=button_style, width=100, height=50)
-            self.back_button.on_click = lambda e: self.main_exit()
-            self.top_box.add(self.back_button)
+        self.back_button = arcade.gui.UITextureButton(texture=button_texture, texture_hovered=button_hovered_texture, text='<--', style=button_style, width=100, height=50)
+        self.back_button.on_click = lambda e: self.main_exit()
+        self.top_box.add(self.back_button)
 
-            self.display_categories()
+        self.display_categories()
 
         self.display_category(self.current_category)
 
@@ -273,7 +273,7 @@ class Settings(arcade.gui.UIView):
         else:
             font_size = 12
 
-        self.credits_label = arcade.gui.UILabel(text=text, text_color=arcade.color.WHITE, font_name="Protest Strike", font_size=font_size, align="center", multiline=True)
+        self.credits_label = arcade.gui.UILabel(text=text, text_color=arcade.color.WHITE, font_name="Roboto", font_size=font_size, align="center", multiline=True)
 
         self.key_layout.add(self.credits_label)
 

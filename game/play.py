@@ -1,9 +1,8 @@
-import os
-import arcade, arcade.gui, random, math, json
+import os, arcade, arcade.gui, random, math, json, time
 
 from game.sprites import Shape
-from utils.constants import SHAPES, CELL_SIZE, ROWS, COLS, menu_background_color, OUTLINE_WIDTH, COLORS, button_style
-from utils.preload import button_texture, button_hovered_texture, click_sound
+from utils.constants import SHAPES, CELL_SIZE, ROWS, COLS, OUTLINE_WIDTH, COLORS, COMBO_TIME, button_style
+from utils.preload import button_texture, button_hovered_texture, click_sound, break_sound
 
 class Game(arcade.gui.UIView):
     def __init__(self, pypresence_client):
@@ -17,10 +16,10 @@ class Game(arcade.gui.UIView):
         self.shapes = []
 
         self.shape_to_place = random.choice(list(SHAPES.keys()))
-        self.shape_color = random.choice(list(COLORS.values()))
+        self.shape_color = random.choice(COLORS)
 
         self.next_shape_to_place = random.choice(list(SHAPES.keys()))
-        self.next_shape_color = random.choice(list(COLORS.values()))
+        self.next_shape_color = random.choice(COLORS)
 
         self.start_x = self.window.width / 2 - (COLS * (CELL_SIZE + OUTLINE_WIDTH)) / 2 + (CELL_SIZE / 2)
         self.start_y = self.window.height - (ROWS * (CELL_SIZE + OUTLINE_WIDTH)) - (CELL_SIZE / 2)
@@ -32,6 +31,8 @@ class Game(arcade.gui.UIView):
             self.high_score = 0
 
         self.score = 0
+        self.combo = 0
+        self.last_combo = time.perf_counter()
 
         self.anchor = self.add_widget(arcade.gui.UIAnchorLayout())
 
@@ -57,17 +58,20 @@ class Game(arcade.gui.UIView):
         self.setup_grid()
 
         self.mouse_shape = Shape(0, 0, self.shape_to_place, self.shape_color, self.mouse_shape_list)
-        self.next_shape_ui = Shape(self.window.width - (CELL_SIZE * 4), self.window.height - (CELL_SIZE * 4), self.next_shape_to_place, self.next_shape_color, self.shape_list)
+        self.next_shape_ui = Shape(self.window.width - (CELL_SIZE * 3), self.window.height - (CELL_SIZE * 3), self.next_shape_to_place, self.next_shape_color, self.shape_list)
 
         self.score_box = self.anchor.add(arcade.gui.UIBoxLayout(space_between=10, vertical=False), anchor_x="center", anchor_y="top")
 
-        self.score_label = self.score_box.add(arcade.gui.UILabel(text="Score: 0", font_name="Protest Strike", font_size=24))
-        self.high_score_label = self.score_box.add(arcade.gui.UILabel(text=f"High Score: {self.high_score}", font_name="Protest Strike", font_size=24))
+        self.score_label = self.score_box.add(arcade.gui.UILabel(text="Score: 0", font_name="Roboto", font_size=24))
+        self.high_score_label = self.score_box.add(arcade.gui.UILabel(text=f"High Score: {self.high_score}", font_name="Roboto", font_size=24))
 
         self.back_button = arcade.gui.UITextureButton(texture=button_texture, texture_hovered=button_hovered_texture, text='<--', style=button_style, width=100, height=50)
         self.back_button.on_click = lambda e: self.main_exit()
         self.anchor.add(self.back_button, anchor_x="left", anchor_y="top", align_x=5, align_y=-5)
-
+        
+        self.combo_label = self.anchor.add(arcade.gui.UILabel(text=f"Combo X{self.combo}", font_name="Roboto", font_size=32), anchor_x="center", anchor_y="center")
+        self.combo_label.visible = False
+        
         self.pypresence_client.update(state='In Game', details='Shattering Stacks', start=self.pypresence_client.start_time)
 
         self.window.set_mouse_visible(False)
@@ -75,6 +79,7 @@ class Game(arcade.gui.UIView):
     def setup_grid(self):
         for row in range(ROWS):
             self.occupied[row] = {}
+
             for col in range(COLS):
                 self.occupied[row][col] = 0
                 center_x = self.start_x + col * (CELL_SIZE + OUTLINE_WIDTH)
@@ -117,7 +122,12 @@ class Game(arcade.gui.UIView):
 
                 for col in range(COLS):
                     self.occupied[row_idx][col] = 0
-                    self.score += 25
+                    self.score += 25 + (10 * self.combo)
+            
+                break_sound.play()
+
+                self.combo += 1
+                self.last_combo = time.perf_counter()
 
         for col in range(COLS):
             column = [row[col] for row in self.occupied.values()]
@@ -127,14 +137,30 @@ class Game(arcade.gui.UIView):
 
                 for row_idx in range(ROWS):
                     self.occupied[row_idx][col] = 0
-                    self.score += 25
+                    self.score += 25 + (10 * self.combo)
+
+                break_sound.play()
+                self.combo += 1
+                self.last_combo = time.perf_counter()
 
     def update_game(self):
         self.check_collisions()
+        
         self.score_label.text = f"Score: {self.score}"
+        
         if self.score > self.high_score:
             self.high_score = self.score
             self.high_score_label.text = f"High Score: {self.high_score}"
+
+        if time.perf_counter() - self.last_combo >= COMBO_TIME:
+            self.combo = 0
+
+        if self.combo > 1:
+            self.combo_label.text = f"Combo X{self.combo}"
+            self.combo_label.visible = True
+        else:
+            self.combo_label.visible = False
+
         self.check_game_over()
 
     def check_game_over(self):
@@ -144,10 +170,11 @@ class Game(arcade.gui.UIView):
                 if can_place:
                     return
 
-        self.game_over_label = self.anchor.add(arcade.gui.UILabel(text="GAME OVER", font_name="Protest Strike", font_size=64), anchor_x="center", anchor_y="center")
+        self.game_over_label = self.anchor.add(arcade.gui.UILabel(text="GAME OVER", font_name="Roboto", font_size=64), anchor_x="center", anchor_y="center")
 
         self.shape_list.clear()
         self.mouse_shape_list.clear()
+        self.anchor.remove(self.combo_label)
 
         self.window.set_mouse_visible(True)
 
@@ -159,15 +186,15 @@ class Game(arcade.gui.UIView):
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int) -> bool | None:
         super().on_mouse_press(x, y, button, modifiers)
 
-        if self.settings_dict.get("sfx", True):
-            click_sound.play(volume=self.settings_dict.get("sfx_volume", 50) / 100)
-
         grid_col = math.ceil((x - self.start_x + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
         grid_row = math.ceil((y - self.start_y + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
 
         can_place, center_x, center_y = self.check_occupation(grid_col, grid_row)
 
         if can_place:
+            if self.settings_dict.get("sfx", True):
+                click_sound.play(volume=self.settings_dict.get("sfx_volume", 50) / 100)
+    
             shape = Shape(center_x, center_y, self.shape_to_place, self.shape_color, self.shape_list)
             self.shapes.append(shape)
 
@@ -188,10 +215,11 @@ class Game(arcade.gui.UIView):
             self.update_game()
 
             self.next_shape_to_place = random.choice(list(SHAPES.keys()))
-            self.next_shape_color = random.choice(list(COLORS.values()))
+            self.next_shape_color = random.choice(COLORS)
             self.next_shape_ui.update(self.next_shape_to_place, self.next_shape_color)
 
     def on_draw(self):
-        super().on_draw()
+        self.window.clear()
         self.shape_list.draw()
         self.mouse_shape_list.draw()
+        self.ui.draw()

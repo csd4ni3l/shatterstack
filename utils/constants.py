@@ -7,9 +7,10 @@ menu_background_color = (30, 30, 47)
 log_dir = 'logs'
 discord_presence_id = 1360953272843632680
 
-CELL_SIZE = 48
-ROWS = 14
-COLS = 14
+COMBO_TIME = 10
+CELL_SIZE = 80
+ROWS = 8
+COLS = 8
 OUTLINE_WIDTH = 2
 SHAPES = {
     "I":      [(0, 0), (1, 0), (2, 0), (3, 0)],
@@ -32,20 +33,30 @@ SHAPES = {
     "LINE3": [(0, 0), (1, 0), (2, 0)],
 }
 
-COLORS = {
-    "red": (255, 90, 90, 255),
-    "blue": (100, 180, 255, 255),
-    "green": (100, 255, 160, 255),
-    "yellow": (255, 230, 100, 255),
-    "purple": (200, 100, 255, 255),
-    "orange": (255, 160, 90, 255),
-    "teal": (100, 255, 255, 255),
-}
+COLORS = [
+    (255, 90, 90, 255),
+    (100, 180, 255, 255),
+    (100, 255, 160, 255),
+    (255, 230, 100, 255),
+    (200, 100, 255, 255),
+    (255, 160, 90, 255),
+    (100, 255, 255, 255),
+    (255, 120, 200, 255),
+    (160, 255, 100, 255),
+    (90, 150, 255, 255),
+    (255, 100, 180, 255),
+    (255, 200, 120, 255),
+    (180, 255, 220, 255),
+    (150, 100, 255, 255),
+    (255, 255, 150, 255),
+    (100, 255, 200, 255),
+    (255, 140, 140, 255),
+]
 
-button_style = {'normal': UITextureButtonStyle(font_name="Protest Strike", font_color=arcade.color.BLACK), 'hover': UITextureButtonStyle(font_name="Protest Strike", font_color=arcade.color.BLACK),
-                'press': UITextureButtonStyle(font_name="Protest Strike", font_color=arcade.color.BLACK), 'disabled': UITextureButtonStyle(font_name="Protest Strike", font_color=arcade.color.BLACK)}
-dropdown_style = {'normal': UIFlatButtonStyle(font_name="Protest Strike", font_color=arcade.color.BLACK, bg=Color(128, 128, 128)), 'hover': UIFlatButtonStyle(font_name="Protest Strike", font_color=arcade.color.BLACK, bg=Color(49, 154, 54)),
-                  'press': UIFlatButtonStyle(font_name="Protest Strike", font_color=arcade.color.BLACK, bg=Color(128, 128, 128)), 'disabled': UIFlatButtonStyle(font_name="Protest Strike", font_color=arcade.color.BLACK, bg=Color(128, 128, 128))}
+button_style = {'normal': UITextureButtonStyle(font_name="Roboto", font_color=arcade.color.BLACK), 'hover': UITextureButtonStyle(font_name="Roboto", font_color=arcade.color.BLACK),
+                'press': UITextureButtonStyle(font_name="Roboto", font_color=arcade.color.BLACK), 'disabled': UITextureButtonStyle(font_name="Roboto", font_color=arcade.color.BLACK)}
+dropdown_style = {'normal': UIFlatButtonStyle(font_name="Roboto", font_color=arcade.color.BLACK, bg=Color(128, 128, 128)), 'hover': UIFlatButtonStyle(font_name="Roboto", font_color=arcade.color.BLACK, bg=Color(49, 154, 54)),
+                  'press': UIFlatButtonStyle(font_name="Roboto", font_color=arcade.color.BLACK, bg=Color(128, 128, 128)), 'disabled': UIFlatButtonStyle(font_name="Roboto", font_color=arcade.color.BLACK, bg=Color(128, 128, 128))}
 
 slider_default_style = UISliderStyle(bg=Color(128, 128, 128), unfilled_track=Color(128, 128, 128), filled_track=Color(49, 154, 54))
 slider_hover_style = UISliderStyle(bg=Color(49, 154, 54), unfilled_track=Color(128, 128, 128), filled_track=Color(49, 154, 54))

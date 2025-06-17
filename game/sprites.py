@@ -1,5 +1,5 @@
-import arcade, random
-from utils.constants import SHAPES, COLORS, CELL_SIZE, OUTLINE_WIDTH
+import arcade
+from utils.constants import SHAPES, CELL_SIZE, OUTLINE_WIDTH
 
 class Shape():
     def __init__(self, x, y, shape_type, shape_color, sprite_list: arcade.SpriteList):

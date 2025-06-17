@@ -40,8 +40,6 @@ class Main(arcade.gui.UIView):
                     self.pypresence_client = FakePyPresence()
                     self.pypresence_client.start_time = start_time
 
-            self.pypresence_client.update(state='In Menu',
-                                                details=f'In Main Menu', start=self.pypresence_client.start_time)
         else: # game has started, but the user has disabled RPC in the settings.
             self.pypresence_client = FakePyPresence()
             self.pypresence_client.start_time = time.time()
@@ -51,7 +49,7 @@ class Main(arcade.gui.UIView):
     def on_show_view(self):
         super().on_show_view()
 
-        self.title_label = self.box.add(arcade.gui.UILabel(text="ShatterStack", font_name="Protest Strike", font_size=48))
+        self.title_label = self.box.add(arcade.gui.UILabel(text="ShatterStack", font_name="Roboto", font_size=48))
 
         self.play_button = self.box.add(arcade.gui.UITextureButton(text="Play", texture=button_texture, texture_hovered=button_hovered_texture, width=self.window.width / 2, height=150, style=button_style))
         self.play_button.on_click = lambda event: self.play()

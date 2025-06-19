@@ -27,16 +27,15 @@ class Shape():
             tile.visible = False
 
         for offset_col, offset_row in SHAPES[self.shape_type]:
-            x = self.x + (offset_col * (CELL_SIZE + OUTLINE_WIDTH))
-            y = self.y + (offset_row * (CELL_SIZE + OUTLINE_WIDTH))
+            tile_x = self.x + (offset_col * (CELL_SIZE + OUTLINE_WIDTH))
+            tile_y = self.y + (offset_row * (CELL_SIZE + OUTLINE_WIDTH))
 
             if n < len(self.tiles):
-                self.tiles[n].position = x, y, 0
+                self.tiles[n].position = tile_x, tile_y, 0
                 self.tiles[n].color = color
                 self.tiles[n].visible = True
             else:
-                self.tiles.append(arcade.SpriteSolidColor(width=CELL_SIZE, height=CELL_SIZE,
-                                                         color=color, center_x=x, center_y=y))
+                self.tiles.append(arcade.SpriteSolidColor(width=CELL_SIZE, height=CELL_SIZE, color=color, center_x=tile_x, center_y=tile_y))
                 self.sprite_list.append(self.tiles[-1])
 
             n += 1
@@ -45,6 +44,5 @@ class Shape():
         for offset_col, offset_row in SHAPES[self.shape_type]:
             x = self.x + (offset_col * (CELL_SIZE + OUTLINE_WIDTH))
             y = self.y + (offset_row * (CELL_SIZE + OUTLINE_WIDTH))
-            self.tiles.append(arcade.SpriteSolidColor(width=CELL_SIZE, height=CELL_SIZE,
-                                                    color=self.shape_color, center_x=x, center_y=y))
+            self.tiles.append(arcade.SpriteSolidColor(width=CELL_SIZE, height=CELL_SIZE, color=self.shape_color, center_x=x, center_y=y))
             self.sprite_list.append(self.tiles[-1])

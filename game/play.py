@@ -23,6 +23,10 @@ class Game(arcade.gui.UIView):
 
         self.start_x = self.window.width / 2 - (COLS * (CELL_SIZE + OUTLINE_WIDTH)) / 2 + (CELL_SIZE / 2)
         self.start_y = self.window.height - (ROWS * (CELL_SIZE + OUTLINE_WIDTH)) - (CELL_SIZE / 2)
+        self.shape_center_x = 0
+        self.shape_center_y = 0
+        self.can_place_shape = True
+        self.empty_grid = {}
 
         if os.path.exists("data.json"):
             with open("data.json", "r") as file:
@@ -50,6 +54,30 @@ class Game(arcade.gui.UIView):
 
     def on_mouse_motion(self, x, y, dx, dy):
         super().on_mouse_motion(x, y, dx, dy)
+
+        grid_col = math.ceil((x - self.start_x + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
+        grid_row = math.ceil((y - self.start_y + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
+
+        self.can_place_shape = True
+        tile_positions = []
+        for offset_col, offset_row in SHAPES[self.shape_to_place]:
+            tile_col = grid_col + offset_col
+            tile_row = grid_row + offset_row
+
+            if not (0 <= tile_row < ROWS and 0 <= tile_col < COLS) or self.occupied[tile_row][tile_col]:
+                self.can_place_shape = False
+                break
+
+            tile_positions.append((tile_row, tile_col))
+
+            self.shape_center_x = self.start_x + grid_col * (CELL_SIZE + OUTLINE_WIDTH)
+            self.shape_center_y = self.start_y + grid_row * (CELL_SIZE + OUTLINE_WIDTH)
+
+        for row in range(ROWS):
+            for col in range(COLS):
+                if self.empty_grid[row][col]:
+                    self.empty_grid[row][col].color = (*self.shape_color[:-1], 170) if self.can_place_shape and (row, col) in tile_positions else arcade.color.GRAY
+
         self.mouse_shape.update(self.shape_to_place, self.shape_color, x, y)
 
     def on_show_view(self):
@@ -79,40 +107,23 @@ class Game(arcade.gui.UIView):
     def setup_grid(self):
         for row in range(ROWS):
             self.occupied[row] = {}
+            self.empty_grid[row] = {}
 
             for col in range(COLS):
                 self.occupied[row][col] = 0
+
                 center_x = self.start_x + col * (CELL_SIZE + OUTLINE_WIDTH)
                 center_y = self.start_y + row * (CELL_SIZE + OUTLINE_WIDTH)
-
-                self.shape_list.append(arcade.SpriteSolidColor(
+                tile = arcade.SpriteSolidColor(
                     width=CELL_SIZE,
                     height=CELL_SIZE,
                     color=arcade.color.GRAY,
                     center_x=center_x,
                     center_y=center_y
-                ))
+                )
+                self.shape_list.append(tile)
 
-    def check_occupation(self, grid_col, grid_row):
-        can_place = True
-
-        center_x, center_y = 0, 0
-
-        if 0 <= grid_row < ROWS and 0 <= grid_col < COLS:
-            for offset_col, offset_row in SHAPES[self.shape_to_place]:
-                tile_col = grid_col + offset_col
-                tile_row = grid_row + offset_row
-
-                if not (0 <= tile_row < ROWS and 0 <= tile_col < COLS) or self.occupied[tile_row][tile_col]:
-                    can_place = False
-                    break
-
-                center_x = self.start_x + grid_col * (CELL_SIZE + OUTLINE_WIDTH)
-                center_y = self.start_y + grid_row * (CELL_SIZE + OUTLINE_WIDTH)
-        else:
-            can_place = False
-
-        return can_place, center_x, center_y
+                self.empty_grid[row][col] = tile
 
     def check_collisions(self):
         for row_idx, row in self.occupied.items():
@@ -122,6 +133,18 @@ class Game(arcade.gui.UIView):
 
                 for col in range(COLS):
                     self.occupied[row_idx][col] = 0
+                    center_x = self.start_x + col * (CELL_SIZE + OUTLINE_WIDTH)
+                    center_y = self.start_y + row_idx * (CELL_SIZE + OUTLINE_WIDTH)
+                    tile = arcade.SpriteSolidColor(
+                        width=CELL_SIZE,
+                        height=CELL_SIZE,
+                        color=arcade.color.GRAY,
+                        center_x=center_x,
+                        center_y=center_y
+                    )
+                    self.shape_list.append(tile)
+                    self.empty_grid[row_idx][col] = tile
+
                     self.score += 25 + (10 * self.combo)
             
                 break_sound.play()
@@ -137,6 +160,18 @@ class Game(arcade.gui.UIView):
 
                 for row_idx in range(ROWS):
                     self.occupied[row_idx][col] = 0
+                    center_x = self.start_x + col * (CELL_SIZE + OUTLINE_WIDTH)
+                    center_y = self.start_y + row_idx * (CELL_SIZE + OUTLINE_WIDTH)
+                    tile = arcade.SpriteSolidColor(
+                        width=CELL_SIZE,
+                        height=CELL_SIZE,
+                        color=arcade.color.GRAY,
+                        center_x=center_x,
+                        center_y=center_y
+                    )
+                    self.shape_list.append(tile)
+                    self.empty_grid[row_idx][col] = tile
+                    
                     self.score += 25 + (10 * self.combo)
 
                 break_sound.play()
@@ -146,7 +181,7 @@ class Game(arcade.gui.UIView):
     def update_game(self):
         self.check_collisions()
         
-        self.score_label.text = f"Score: {self.score}"
+        self.score_label.text = f"Score: {self.score}" + (f" Combo: X{self.combo}" if self.combo else "")
         
         if self.score > self.high_score:
             self.high_score = self.score
@@ -155,18 +190,20 @@ class Game(arcade.gui.UIView):
         if time.perf_counter() - self.last_combo >= COMBO_TIME:
             self.combo = 0
 
-        if self.combo > 1:
-            self.combo_label.text = f"Combo X{self.combo}"
-            self.combo_label.visible = True
-        else:
-            self.combo_label.visible = False
-
         self.check_game_over()
 
     def check_game_over(self):
         for grid_row in range(ROWS):
             for grid_col in range(COLS):
-                can_place, *_ = self.check_occupation(grid_col, grid_row)
+                can_place = True
+                
+                for offset_col, offset_row in SHAPES[self.shape_to_place]:
+                    tile_col = grid_col + offset_col
+                    tile_row = grid_row + offset_row
+
+                    if not (0 <= tile_row < ROWS and 0 <= tile_col < COLS) or self.occupied[tile_row][tile_col]:
+                        can_place = False
+
                 if can_place:
                     return
 
@@ -189,13 +226,11 @@ class Game(arcade.gui.UIView):
         grid_col = math.ceil((x - self.start_x + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
         grid_row = math.ceil((y - self.start_y + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
 
-        can_place, center_x, center_y = self.check_occupation(grid_col, grid_row)
-
-        if can_place:
+        if self.can_place_shape:
             if self.settings_dict.get("sfx", True):
                 click_sound.play(volume=self.settings_dict.get("sfx_volume", 50) / 100)
     
-            shape = Shape(center_x, center_y, self.shape_to_place, self.shape_color, self.shape_list)
+            shape = Shape(self.shape_center_x, self.shape_center_y, self.shape_to_place, self.shape_color, self.shape_list)
             self.shapes.append(shape)
 
             n = 0
@@ -204,6 +239,8 @@ class Game(arcade.gui.UIView):
                 tile_col = grid_col + offset_col
                 tile_row = grid_row + offset_row
                 self.occupied[tile_row][tile_col] = shape.tiles[n]
+                self.shape_list.remove(self.empty_grid[tile_row][tile_col])
+                self.empty_grid[tile_row][tile_col] = None
 
                 n += 1
 

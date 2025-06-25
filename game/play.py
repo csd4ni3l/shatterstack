@@ -1,4 +1,4 @@
-import os, arcade, arcade.gui, random, json, time
+import os, arcade, arcade.gui, random, json, time, copy
 
 from game.sprites import Shape
 from utils.constants import SHAPES, CELL_SIZE, ROWS, COLS, OUTLINE_WIDTH, COLORS, COMBO_TIME, button_style
@@ -101,11 +101,18 @@ class Game(arcade.gui.UIView):
 
             self.shape_center_x = self.start_x + grid_col * (CELL_SIZE + OUTLINE_WIDTH)
             self.shape_center_y = self.start_y + grid_row * (CELL_SIZE + OUTLINE_WIDTH)
+        
+        if self.can_place_shape:
+            collided_tile_positions = self.check_collisions_before(grid_col, grid_row)
+        else:
+            collided_tile_positions = []
 
         for row in range(ROWS):
             for col in range(COLS):
                 if self.empty_grid[row][col]:
                     self.empty_grid[row][col].color = (*self.shape_color[:-1], 170) if self.can_place_shape and (row, col) in tile_positions else arcade.color.GRAY
+                else:
+                    self.occupied[row][col].color = (*self.shape_color[:-1], 170) if (row, col) in collided_tile_positions else self.occupied[row][col].original_color
 
         self.mouse_shape.update(self.shape_to_place, self.shape_color, x, y)
 
@@ -130,6 +137,28 @@ class Game(arcade.gui.UIView):
 
                 self.empty_grid[row][col] = tile
 
+    def check_collisions_before(self, grid_col, grid_row):
+        modified_grid = {row: {col: (1 if value else 0) for col, value in self.occupied[row].items()} for row in self.occupied}
+
+        for offset_col, offset_row in SHAPES[self.shape_to_place]:
+            tile_col = grid_col + offset_col
+            tile_row = grid_row + offset_row
+            modified_grid[tile_row][tile_col] = 1
+
+        collided_tiles = []
+        for row_idx, row in modified_grid.items():
+            if all(row.values()):
+                for col in range(COLS):
+                    collided_tiles.append((row_idx, col))
+
+        for col in range(COLS):
+            column = [row[col] for row in modified_grid.values()]
+            if all(column):
+                for row in range(ROWS):
+                    collided_tiles.append((row, col))
+
+        return collided_tiles
+    
     def check_collisions(self):
         for row_idx, row in self.occupied.items():
             if all(row.values()):
@@ -244,6 +273,7 @@ class Game(arcade.gui.UIView):
                 tile_col = grid_col + offset_col
                 tile_row = grid_row + offset_row
                 self.occupied[tile_row][tile_col] = shape.tiles[n]
+                self.occupied[tile_row][tile_col].original_color = shape.shape_color
                 self.shape_list.remove(self.empty_grid[tile_row][tile_col])
                 self.empty_grid[tile_row][tile_col] = None
 

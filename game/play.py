@@ -103,16 +103,16 @@ class Game(arcade.gui.UIView):
             self.shape_center_y = self.start_y + grid_row * (CELL_SIZE + OUTLINE_WIDTH)
         
         if self.can_place_shape:
-            collided_tile_positions = self.check_collisions_before(grid_col, grid_row)
+            self.collided_tile_positions = self.check_collisions(grid_col, grid_row)
         else:
-            collided_tile_positions = []
+            self.collided_tile_positions = []
 
         for row in range(ROWS):
             for col in range(COLS):
                 if self.empty_grid[row][col]:
                     self.empty_grid[row][col].color = (*self.shape_color[:-1], 170) if self.can_place_shape and (row, col) in tile_positions else arcade.color.GRAY
                 else:
-                    self.occupied[row][col].color = (*self.shape_color[:-1], 170) if (row, col) in collided_tile_positions else self.occupied[row][col].original_color
+                    self.occupied[row][col].color = (*self.shape_color[:-1], 170) if (row, col) in self.collided_tile_positions else self.occupied[row][col].original_color
 
         self.mouse_shape.update(self.shape_to_place, self.shape_color, x, y)
 
@@ -122,22 +122,25 @@ class Game(arcade.gui.UIView):
             self.empty_grid[row] = {}
 
             for col in range(COLS):
-                self.occupied[row][col] = 0
+                self.create_empty_tile(row, col)
 
-                center_x = self.start_x + col * (CELL_SIZE + OUTLINE_WIDTH)
-                center_y = self.start_y + row * (CELL_SIZE + OUTLINE_WIDTH)
-                tile = arcade.SpriteSolidColor(
-                    width=CELL_SIZE,
-                    height=CELL_SIZE,
-                    color=arcade.color.GRAY,
-                    center_x=center_x,
-                    center_y=center_y
-                )
-                self.shape_list.append(tile)
+    def create_empty_tile(self, row, col):
+        self.occupied[row][col] = 0
 
-                self.empty_grid[row][col] = tile
+        center_x = self.start_x + col * (CELL_SIZE + OUTLINE_WIDTH)
+        center_y = self.start_y + row * (CELL_SIZE + OUTLINE_WIDTH)
+        tile = arcade.SpriteSolidColor(
+            width=CELL_SIZE,
+            height=CELL_SIZE,
+            color=arcade.color.GRAY,
+            center_x=center_x,
+            center_y=center_y
+        )
+        self.shape_list.append(tile)
 
-    def check_collisions_before(self, grid_col, grid_row):
+        self.empty_grid[row][col] = tile
+
+    def check_collisions(self, grid_col, grid_row):
         modified_grid = {row: {col: (1 if value else 0) for col, value in self.occupied[row].items()} for row in self.occupied}
 
         for offset_col, offset_row in SHAPES[self.shape_to_place]:
@@ -158,62 +161,19 @@ class Game(arcade.gui.UIView):
                     collided_tiles.append((row, col))
 
         return collided_tiles
-    
-    def check_collisions(self):
-        for row_idx, row in self.occupied.items():
-            if all(row.values()):
-                for tile in row.values():
-                    self.shape_list.remove(tile)
-
-                for col in range(COLS):
-                    self.occupied[row_idx][col] = 0
-                    center_x = self.start_x + col * (CELL_SIZE + OUTLINE_WIDTH)
-                    center_y = self.start_y + row_idx * (CELL_SIZE + OUTLINE_WIDTH)
-                    tile = arcade.SpriteSolidColor(
-                        width=CELL_SIZE,
-                        height=CELL_SIZE,
-                        color=arcade.color.GRAY,
-                        center_x=center_x,
-                        center_y=center_y
-                    )
-                    self.shape_list.append(tile)
-                    self.empty_grid[row_idx][col] = tile
-
-                    self.score += 25 + (10 * self.combo)
-            
-                break_sound.play()
-
-                self.combo += 1
-                self.last_combo = time.perf_counter()
-
-        for col in range(COLS):
-            column = [row[col] for row in self.occupied.values()]
-            if all(column):
-                for tile in column:
-                    self.shape_list.remove(tile)
-
-                for row_idx in range(ROWS):
-                    self.occupied[row_idx][col] = 0
-                    center_x = self.start_x + col * (CELL_SIZE + OUTLINE_WIDTH)
-                    center_y = self.start_y + row_idx * (CELL_SIZE + OUTLINE_WIDTH)
-                    tile = arcade.SpriteSolidColor(
-                        width=CELL_SIZE,
-                        height=CELL_SIZE,
-                        color=arcade.color.GRAY,
-                        center_x=center_x,
-                        center_y=center_y
-                    )
-                    self.shape_list.append(tile)
-                    self.empty_grid[row_idx][col] = tile
-                    
-                    self.score += 25 + (10 * self.combo)
-
-                break_sound.play()
-                self.combo += 1
-                self.last_combo = time.perf_counter()
 
     def update_game(self):
-        self.check_collisions()
+        for row, col in self.collided_tile_positions:
+            self.shape_list.remove(self.occupied[row][col])
+            
+            self.create_empty_tile(row, col)
+
+            self.score += 25 + (10 * self.combo)
+            
+            break_sound.play()
+
+            self.combo += 1
+            self.last_combo = time.perf_counter()
         
         self.score_label.text = f"Score: {self.score}" + (f" Combo: X{self.combo}" if self.combo else "")
         

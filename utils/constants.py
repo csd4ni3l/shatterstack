@@ -7,7 +7,7 @@ menu_background_color = (30, 30, 47)
 log_dir = 'logs'
 discord_presence_id = 1360953272843632680
 
-COMBO_TIME = 10
+COMBO_TIME = 5
 CELL_SIZE = 80
 ROWS = 8
 COLS = 8

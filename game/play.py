@@ -1,9 +1,8 @@
-import os, arcade, arcade.gui, random, math, json, time
+import os, arcade, arcade.gui, random, json, time
 
 from game.sprites import Shape
 from utils.constants import SHAPES, CELL_SIZE, ROWS, COLS, OUTLINE_WIDTH, COLORS, COMBO_TIME, button_style
 from utils.preload import button_texture, button_hovered_texture, click_sound, break_sound
-
 class Game(arcade.gui.UIView):
     def __init__(self, pypresence_client):
         super().__init__()
@@ -52,34 +51,6 @@ class Game(arcade.gui.UIView):
         from menus.main import Main
         self.window.show_view(Main())
 
-    def on_mouse_motion(self, x, y, dx, dy):
-        super().on_mouse_motion(x, y, dx, dy)
-
-        grid_col = math.ceil((x - self.start_x + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
-        grid_row = math.ceil((y - self.start_y + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
-
-        self.can_place_shape = True
-        tile_positions = []
-        for offset_col, offset_row in SHAPES[self.shape_to_place]:
-            tile_col = grid_col + offset_col
-            tile_row = grid_row + offset_row
-
-            if not (0 <= tile_row < ROWS and 0 <= tile_col < COLS) or self.occupied[tile_row][tile_col]:
-                self.can_place_shape = False
-                break
-
-            tile_positions.append((tile_row, tile_col))
-
-            self.shape_center_x = self.start_x + grid_col * (CELL_SIZE + OUTLINE_WIDTH)
-            self.shape_center_y = self.start_y + grid_row * (CELL_SIZE + OUTLINE_WIDTH)
-
-        for row in range(ROWS):
-            for col in range(COLS):
-                if self.empty_grid[row][col]:
-                    self.empty_grid[row][col].color = (*self.shape_color[:-1], 170) if self.can_place_shape and (row, col) in tile_positions else arcade.color.GRAY
-
-        self.mouse_shape.update(self.shape_to_place, self.shape_color, x, y)
-
     def on_show_view(self):
         super().on_show_view()
 
@@ -103,6 +74,43 @@ class Game(arcade.gui.UIView):
         self.pypresence_client.update(state='In Game', details='Shattering Stacks', start=self.pypresence_client.start_time)
 
         self.window.set_mouse_visible(False)
+
+    def on_stick_motion(self, controller, name, value):
+        if name == "leftstick":
+            value *= 10
+            self.on_mouse_motion(self.mouse_shape.x + value.x, self.mouse_shape.y + value.y, value.x, value.y)
+
+    def on_button_press(self, controller, name):
+        if name == "a":
+            self.on_mouse_press(self.mouse_shape.x, self.mouse_shape.y, arcade.MOUSE_BUTTON_LEFT, 0)
+        elif name == "start":
+            self.main_exit()
+
+    def on_mouse_motion(self, x, y, dx, dy):
+        grid_col = int((x - self.start_x + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
+        grid_row = int((y - self.start_y + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
+
+        self.can_place_shape = True
+        tile_positions = []
+        for offset_col, offset_row in SHAPES[self.shape_to_place]:
+            tile_col = grid_col + offset_col
+            tile_row = grid_row + offset_row
+
+            if not (0 <= tile_row < ROWS and 0 <= tile_col < COLS) or self.occupied[tile_row][tile_col]:
+                self.can_place_shape = False
+                break
+
+            tile_positions.append((tile_row, tile_col))
+
+            self.shape_center_x = self.start_x + grid_col * (CELL_SIZE + OUTLINE_WIDTH)
+            self.shape_center_y = self.start_y + grid_row * (CELL_SIZE + OUTLINE_WIDTH)
+
+        for row in range(ROWS):
+            for col in range(COLS):
+                if self.empty_grid[row][col]:
+                    self.empty_grid[row][col].color = (*self.shape_color[:-1], 170) if self.can_place_shape and (row, col) in tile_positions else arcade.color.GRAY
+
+        self.mouse_shape.update(self.shape_to_place, self.shape_color, x, y)
 
     def setup_grid(self):
         for row in range(ROWS):
@@ -223,8 +231,8 @@ class Game(arcade.gui.UIView):
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int) -> bool | None:
         super().on_mouse_press(x, y, button, modifiers)
 
-        grid_col = math.ceil((x - self.start_x + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
-        grid_row = math.ceil((y - self.start_y + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
+        grid_col = int((x - self.start_x + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
+        grid_row = int((y - self.start_y + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
 
         if self.can_place_shape:
             if self.settings_dict.get("sfx", True):

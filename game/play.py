@@ -68,9 +68,6 @@ class Game(arcade.gui.UIView):
         self.back_button.on_click = lambda e: self.main_exit()
         self.anchor.add(self.back_button, anchor_x="left", anchor_y="top", align_x=5, align_y=-5)
         
-        self.combo_label = self.anchor.add(arcade.gui.UILabel(text=f"Combo X{self.combo}", font_name="Roboto", font_size=32), anchor_x="center", anchor_y="center")
-        self.combo_label.visible = False
-        
         self.pypresence_client.update(state='In Game', details='Shattering Stacks', start=self.pypresence_client.start_time)
 
         self.window.set_mouse_visible(False)
@@ -215,11 +212,11 @@ class Game(arcade.gui.UIView):
                 if can_place:
                     return
 
-        self.game_over_label = self.anchor.add(arcade.gui.UILabel(text="GAME OVER", font_name="Roboto", font_size=64), anchor_x="center", anchor_y="center")
+        self.game_over_window = self.anchor.add(arcade.gui.UIBoxLayout(), anchor_x="center", anchor_y="center")
+        self.game_over_window._bg_color = arcade.color.BLACK
+        self.game_over_label = self.game_over_window.add(arcade.gui.UILabel(text="GAME OVER", font_name="Roboto", font_size=80, text_color=arcade.color.WHITE))
 
-        self.shape_list.clear()
         self.mouse_shape_list.clear()
-        self.anchor.remove(self.combo_label)
 
         self.window.set_mouse_visible(True)
 
@@ -257,11 +254,11 @@ class Game(arcade.gui.UIView):
             self.shape_to_place = self.next_shape_to_place
             self.shape_color = self.next_shape_color
 
-            self.update_game()
-
             self.next_shape_to_place = random.choice(list(SHAPES.keys()))
             self.next_shape_color = random.choice(COLORS)
             self.next_shape_ui.update(self.next_shape_to_place, self.next_shape_color)
+
+            self.update_game()
 
     def on_draw(self):
         self.window.clear()

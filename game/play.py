@@ -1,4 +1,4 @@
-import os, arcade, arcade.gui, random, json, time, copy
+import os, arcade, arcade.gui, random, json, time
 
 from game.sprites import Shape
 from utils.constants import SHAPES, CELL_SIZE, ROWS, COLS, OUTLINE_WIDTH, COLORS, COMBO_TIME, button_style
@@ -32,6 +32,9 @@ class Game(arcade.gui.UIView):
                 self.high_score = json.load(file)["high_score"]
         else:
             self.high_score = 0
+
+        self.tiles_to_destroy: list[tuple[int, int]] = []
+        self.tiles_to_destroy_classes: dict[tuple[int, int], arcade.SpriteSolidColor] = {}
 
         self.score = 0
         self.combo = 0
@@ -67,7 +70,7 @@ class Game(arcade.gui.UIView):
         self.back_button = arcade.gui.UITextureButton(texture=button_texture, texture_hovered=button_hovered_texture, text='<--', style=button_style, width=100, height=50)
         self.back_button.on_click = lambda e: self.main_exit()
         self.anchor.add(self.back_button, anchor_x="left", anchor_y="top", align_x=5, align_y=-5)
-        
+
         self.pypresence_client.update(state='In Game', details='Shattering Stacks', start=self.pypresence_client.start_time)
 
         self.window.set_mouse_visible(False)
@@ -93,7 +96,7 @@ class Game(arcade.gui.UIView):
             tile_col = grid_col + offset_col
             tile_row = grid_row + offset_row
 
-            if not (0 <= tile_row < ROWS and 0 <= tile_col < COLS) or self.occupied[tile_row][tile_col]:
+            if not (0 <= tile_row < ROWS and 0 <= tile_col < COLS) or self.occupied[tile_row][tile_col] or (tile_row, tile_col) in self.tiles_to_destroy:
                 self.can_place_shape = False
                 break
 
@@ -101,7 +104,7 @@ class Game(arcade.gui.UIView):
 
             self.shape_center_x = self.start_x + grid_col * (CELL_SIZE + OUTLINE_WIDTH)
             self.shape_center_y = self.start_y + grid_row * (CELL_SIZE + OUTLINE_WIDTH)
-        
+
         if self.can_place_shape:
             self.collided_tile_positions = self.check_collisions(grid_col, grid_row)
         else:
@@ -164,38 +167,56 @@ class Game(arcade.gui.UIView):
 
     def update_game(self):
         for row, col in self.collided_tile_positions:
-            self.shape_list.remove(self.occupied[row][col])
-            
-            self.create_empty_tile(row, col)
+            self.tiles_to_destroy.append((row, col))
+            self.tiles_to_destroy_classes[(row, col)] = self.occupied[row][col]
 
             self.score += 25 + (10 * self.combo)
-            
+
             break_sound.play()
 
             self.combo += 1
             self.last_combo = time.perf_counter()
-        
+
         self.score_label.text = f"Score: {self.score}" + (f" Combo: X{self.combo}" if self.combo else "")
-        
+
         if self.score > self.high_score:
             self.high_score = self.score
             self.high_score_label.text = f"High Score: {self.high_score}"
 
+        self.check_game_over()
+
+    def on_update(self, _):
         if time.perf_counter() - self.last_combo >= COMBO_TIME:
             self.combo = 0
+            self.score_label.text = f"Score: {self.score}"
 
-        self.check_game_over()
+        for row, col in self.tiles_to_destroy[:]:
+            tile = self.tiles_to_destroy_classes.get((row, col))
+            if not tile:
+                self.tiles_to_destroy.remove((row, col))
+                self.tiles_to_destroy_classes.pop((row, col), None)
+                continue
+
+            tile.scale = (tile.scale_x - 0.05, tile.scale_y - 0.05)
+
+            if tile.scale_x <= 0.05:
+                self.tiles_to_destroy.remove((row, col))
+                self.tiles_to_destroy_classes.pop((row, col))
+                tile.remove_from_sprite_lists()
+                del tile
+
+                self.create_empty_tile(row, col)
 
     def check_game_over(self):
         for grid_row in range(ROWS):
             for grid_col in range(COLS):
                 can_place = True
-                
+
                 for offset_col, offset_row in SHAPES[self.shape_to_place]:
                     tile_col = grid_col + offset_col
                     tile_row = grid_row + offset_row
 
-                    if not (0 <= tile_row < ROWS and 0 <= tile_col < COLS) or self.occupied[tile_row][tile_col]:
+                    if not (tile_row, tile_col) in self.tiles_to_destroy and (not (0 <= tile_row < ROWS and 0 <= tile_col < COLS) or self.occupied[tile_row][tile_col]):
                         can_place = False
 
                 if can_place:
@@ -223,7 +244,7 @@ class Game(arcade.gui.UIView):
         if self.can_place_shape:
             if self.settings_dict.get("sfx", True):
                 click_sound.play(volume=self.settings_dict.get("sfx_volume", 50) / 100)
-    
+
             shape = Shape(self.shape_center_x, self.shape_center_y, self.shape_to_place, self.shape_color, self.shape_list)
             self.shapes.append(shape)
 

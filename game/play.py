@@ -1,7 +1,7 @@
-import os, arcade, arcade.gui, random, json, time
+import os, arcade, arcade.gui, random, json, time, copy
 
 from game.sprites import Shape
-from utils.constants import SHAPES, CELL_SIZE, ROWS, COLS, OUTLINE_WIDTH, COLORS, COMBO_TIME, button_style
+from utils.constants import SHAPES, CELL_SIZE, ROWS, COLS, OUTLINE_WIDTH, COLORS, COMBO_MOVES, button_style
 from utils.preload import button_texture, button_hovered_texture, click_sound, break_sound
 class Game(arcade.gui.UIView):
     def __init__(self, pypresence_client):
@@ -11,21 +11,22 @@ class Game(arcade.gui.UIView):
 
         self.pypresence_client = pypresence_client
 
-        self.occupied = {}
-        self.shapes = []
+        self.tile_grid = {}
+        self.sprite_grid = {}
 
         self.shape_to_place = random.choice(list(SHAPES.keys()))
         self.shape_color = random.choice(COLORS)
-
         self.next_shape_to_place = random.choice(list(SHAPES.keys()))
         self.next_shape_color = random.choice(COLORS)
+        self.shape_data = SHAPES[self.shape_to_place]
 
-        self.start_x = self.window.width / 2 - (COLS * (CELL_SIZE + OUTLINE_WIDTH)) / 2 + (CELL_SIZE / 2)
+        self.start_x = self.window.width / 2 - (COLS * (CELL_SIZE + OUTLINE_WIDTH)) / 2
         self.start_y = self.window.height - (ROWS * (CELL_SIZE + OUTLINE_WIDTH)) - (CELL_SIZE / 2)
         self.shape_center_x = 0
         self.shape_center_y = 0
         self.can_place_shape = True
-        self.empty_grid = {}
+        self.is_game_over = False
+        self.combo_moves_left = COMBO_MOVES
 
         if os.path.exists("data.json"):
             with open("data.json", "r") as file:
@@ -34,7 +35,6 @@ class Game(arcade.gui.UIView):
             self.high_score = 0
 
         self.tiles_to_destroy: list[tuple[int, int]] = []
-        self.tiles_to_destroy_classes: dict[tuple[int, int], arcade.SpriteSolidColor] = {}
 
         self.score = 0
         self.combo = 0
@@ -60,7 +60,7 @@ class Game(arcade.gui.UIView):
         self.setup_grid()
 
         self.mouse_shape = Shape(0, 0, self.shape_to_place, self.shape_color, self.mouse_shape_list)
-        self.next_shape_ui = Shape(self.window.width - (CELL_SIZE * 3), self.window.height - (CELL_SIZE * 3), self.next_shape_to_place, self.next_shape_color, self.shape_list)
+        self.next_shape_ui = Shape(self.window.width - (CELL_SIZE * 4), self.window.height - (CELL_SIZE * 4), self.next_shape_to_place, self.next_shape_color, self.shape_list)
 
         self.score_box = self.anchor.add(arcade.gui.UIBoxLayout(space_between=10, vertical=False), anchor_x="center", anchor_y="top")
 
@@ -92,11 +92,11 @@ class Game(arcade.gui.UIView):
 
         self.can_place_shape = True
         tile_positions = []
-        for offset_col, offset_row in SHAPES[self.shape_to_place]:
+        for offset_col, offset_row in self.shape_data:
             tile_col = grid_col + offset_col
             tile_row = grid_row + offset_row
 
-            if not (0 <= tile_row < ROWS and 0 <= tile_col < COLS) or self.occupied[tile_row][tile_col] or (tile_row, tile_col) in self.tiles_to_destroy:
+            if not (0 <= tile_row < ROWS and 0 <= tile_col < COLS) or self.tile_grid[tile_row][tile_col] or (tile_row, tile_col) in self.tiles_to_destroy:
                 self.can_place_shape = False
                 break
 
@@ -112,23 +112,23 @@ class Game(arcade.gui.UIView):
 
         for row in range(ROWS):
             for col in range(COLS):
-                if self.empty_grid[row][col]:
-                    self.empty_grid[row][col].color = (*self.shape_color[:-1], 170) if self.can_place_shape and (row, col) in tile_positions else arcade.color.GRAY
+                if not self.tile_grid[row][col]:
+                    self.sprite_grid[row][col].color = (*self.shape_color[:-1], 170) if self.can_place_shape and (row, col) in tile_positions else arcade.color.GRAY
                 else:
-                    self.occupied[row][col].color = (*self.shape_color[:-1], 170) if (row, col) in self.collided_tile_positions else self.occupied[row][col].original_color
+                    self.sprite_grid[row][col].color = (*self.shape_color[:-1], 170) if (row, col) in self.collided_tile_positions else self.sprite_grid[row][col].original_color
 
         self.mouse_shape.update(self.shape_to_place, self.shape_color, x, y)
 
     def setup_grid(self):
         for row in range(ROWS):
-            self.occupied[row] = {}
-            self.empty_grid[row] = {}
+            self.tile_grid[row] = {}
+            self.sprite_grid[row] = {}
 
             for col in range(COLS):
                 self.create_empty_tile(row, col)
 
     def create_empty_tile(self, row, col):
-        self.occupied[row][col] = 0
+        self.tile_grid[row][col] = 0
 
         center_x = self.start_x + col * (CELL_SIZE + OUTLINE_WIDTH)
         center_y = self.start_y + row * (CELL_SIZE + OUTLINE_WIDTH)
@@ -141,12 +141,12 @@ class Game(arcade.gui.UIView):
         )
         self.shape_list.append(tile)
 
-        self.empty_grid[row][col] = tile
+        self.sprite_grid[row][col] = tile
 
     def check_collisions(self, grid_col, grid_row):
-        modified_grid = {row: {col: (1 if value else 0) for col, value in self.occupied[row].items()} for row in self.occupied}
+        modified_grid = copy.deepcopy(self.tile_grid)
 
-        for offset_col, offset_row in SHAPES[self.shape_to_place]:
+        for offset_col, offset_row in self.shape_data:
             tile_col = grid_col + offset_col
             tile_row = grid_row + offset_row
             modified_grid[tile_row][tile_col] = 1
@@ -165,79 +165,67 @@ class Game(arcade.gui.UIView):
 
         return collided_tiles
 
-    def update_game(self):
-        for row, col in self.collided_tile_positions:
-            self.tiles_to_destroy.append((row, col))
-            self.tiles_to_destroy_classes[(row, col)] = self.occupied[row][col]
-
-            self.score += 25 + (10 * self.combo)
-
-            break_sound.play()
-
-            self.combo += 1
-            self.last_combo = time.perf_counter()
-
+    def on_update(self, _):
         self.score_label.text = f"Score: {self.score}" + (f" Combo: X{self.combo}" if self.combo else "")
 
         if self.score > self.high_score:
             self.high_score = self.score
             self.high_score_label.text = f"High Score: {self.high_score}"
 
-        self.check_game_over()
-
-    def on_update(self, _):
-        if time.perf_counter() - self.last_combo >= COMBO_TIME:
-            self.combo = 0
-            self.score_label.text = f"Score: {self.score}"
-
         for row, col in self.tiles_to_destroy[:]:
-            tile = self.tiles_to_destroy_classes.get((row, col))
+            tile = self.sprite_grid[row][col]
             if not tile:
                 self.tiles_to_destroy.remove((row, col))
-                self.tiles_to_destroy_classes.pop((row, col), None)
                 continue
 
             tile.scale = (tile.scale_x - 0.05, tile.scale_y - 0.05)
 
             if tile.scale_x <= 0.05:
+                tile.color = arcade.color.GRAY
+                tile.original_color = arcade.color.GRAY
+                tile.scale = (1, 1)
+                self.tile_grid[row][col] = 0
                 self.tiles_to_destroy.remove((row, col))
-                self.tiles_to_destroy_classes.pop((row, col))
-                tile.remove_from_sprite_lists()
-                del tile
-
-                self.create_empty_tile(row, col)
 
     def check_game_over(self):
         for grid_row in range(ROWS):
             for grid_col in range(COLS):
                 can_place = True
 
-                for offset_col, offset_row in SHAPES[self.shape_to_place]:
+                for offset_col, offset_row in self.shape_data:
                     tile_col = grid_col + offset_col
                     tile_row = grid_row + offset_row
 
-                    if not (tile_row, tile_col) in self.tiles_to_destroy and (not (0 <= tile_row < ROWS and 0 <= tile_col < COLS) or self.occupied[tile_row][tile_col]):
+                    if not (0 <= tile_row < ROWS and 0 <= tile_col < COLS):
                         can_place = False
+                        break
+
+                    if (tile_row, tile_col) in self.tiles_to_destroy:
+                        continue
+
+                    if self.tile_grid[tile_row][tile_col]:
+                        can_place = False
+                        break
 
                 if can_place:
                     return
 
-        self.game_over_window = self.anchor.add(arcade.gui.UIBoxLayout(), anchor_x="center", anchor_y="center")
-        self.game_over_window._bg_color = arcade.color.BLACK
-        self.game_over_label = self.game_over_window.add(arcade.gui.UILabel(text="GAME OVER", font_name="Roboto", font_size=80, text_color=arcade.color.WHITE))
+        self.is_game_over = True
+
+        self.game_over_box = self.anchor.add(arcade.gui.UIBoxLayout(), anchor_x="center", anchor_y="center")
+        self.game_over_box._bg_color = arcade.color.BLACK
+
+        self.game_over_label = self.game_over_box.add(arcade.gui.UILabel(text="GAME OVER", font_name="Roboto", font_size=80, text_color=arcade.color.WHITE))
 
         self.mouse_shape_list.clear()
 
         self.window.set_mouse_visible(True)
 
     def on_key_press(self, symbol: int, modifiers: int) -> bool | None:
-        super().on_key_press(symbol, modifiers)
         if symbol == arcade.key.ESCAPE:
             self.main_exit()
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int) -> bool | None:
-        super().on_mouse_press(x, y, button, modifiers)
-
         grid_col = int((x - self.start_x + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
         grid_row = int((y - self.start_y + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
 
@@ -245,31 +233,44 @@ class Game(arcade.gui.UIView):
             if self.settings_dict.get("sfx", True):
                 click_sound.play(volume=self.settings_dict.get("sfx_volume", 50) / 100)
 
-            shape = Shape(self.shape_center_x, self.shape_center_y, self.shape_to_place, self.shape_color, self.shape_list)
-            self.shapes.append(shape)
-
-            n = 0
-
-            for offset_col, offset_row in SHAPES[self.shape_to_place]:
+            for offset_col, offset_row in self.shape_data:
                 tile_col = grid_col + offset_col
                 tile_row = grid_row + offset_row
-                self.occupied[tile_row][tile_col] = shape.tiles[n]
-                self.occupied[tile_row][tile_col].original_color = shape.shape_color
-                self.shape_list.remove(self.empty_grid[tile_row][tile_col])
-                self.empty_grid[tile_row][tile_col] = None
 
-                n += 1
+                self.tile_grid[tile_row][tile_col] = 1
+                self.sprite_grid[tile_row][tile_col].color = self.shape_color
+                self.sprite_grid[tile_row][tile_col].original_color = self.shape_color
 
                 self.score += 5
 
+            for row, col in self.collided_tile_positions:
+                self.tiles_to_destroy.append((row, col))
+
+                self.score += 25 + (10 * self.combo)
+
+                break_sound.play()
+
+            if self.collided_tile_positions:
+                self.combo += 1
+                self.combo_moves_left = COMBO_MOVES
+                self.last_combo = time.perf_counter()
+            else:
+                self.combo_moves_left -= 1
+                
+                if self.combo_moves_left == 0:
+                    self.combo = 0
+
             self.shape_to_place = self.next_shape_to_place
             self.shape_color = self.next_shape_color
+            self.shape_data = SHAPES[self.shape_to_place]
 
-            self.next_shape_to_place = random.choice(list(SHAPES.keys()))
-            self.next_shape_color = random.choice(COLORS)
-            self.next_shape_ui.update(self.next_shape_to_place, self.next_shape_color)
+            if not self.is_game_over:
+                self.check_game_over()
 
-            self.update_game()
+            if not self.is_game_over: # This check makes sure to not re-create the next shape if its game over. This confused me, cause the shape it showed could have been placed.
+                self.next_shape_to_place = random.choice(list(SHAPES.keys()))
+                self.next_shape_color = random.choice(COLORS)
+                self.next_shape_ui.update(self.next_shape_to_place, self.next_shape_color)
 
     def on_draw(self):
         self.window.clear()

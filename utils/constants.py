@@ -8,10 +8,17 @@ log_dir = 'logs'
 discord_presence_id = 1360953272843632680
 
 COMBO_MOVES = 3
-CELL_SIZE = 80
-ROWS = 8
-COLS = 8
+CELL_SIZE = 64
+ROWS = 10
+COLS = 10
 OUTLINE_WIDTH = 2
+
+POWER_UPS = {
+    "undo_move": 500,
+    "combo_booster": 1000,
+    "score_booster": 2500,
+    "clear_screen": 5000
+}
 
 SHAPES = {
     "I":      [(0, 0), (1, 0), (2, 0), (3, 0)],

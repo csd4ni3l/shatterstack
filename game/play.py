@@ -1,7 +1,7 @@
 import os, arcade, arcade.gui, random, json, time, copy
 
 from game.sprites import Shape
-from utils.constants import SHAPES, CELL_SIZE, ROWS, COLS, OUTLINE_WIDTH, COLORS, COMBO_MOVES, button_style
+from utils.constants import SHAPES, CELL_SIZE, ROWS, COLS, OUTLINE_WIDTH, COLORS, COMBO_MOVES, button_style, POWER_UPS
 from utils.preload import button_texture, button_hovered_texture, click_sound, break_sound
 class Game(arcade.gui.UIView):
     def __init__(self, pypresence_client):
@@ -13,6 +13,8 @@ class Game(arcade.gui.UIView):
 
         self.tile_grid = {}
         self.sprite_grid = {}
+        
+        self.state_before = []
 
         self.shape_to_place = random.choice(list(SHAPES.keys()))
         self.shape_color = random.choice(COLORS)
@@ -22,11 +24,21 @@ class Game(arcade.gui.UIView):
 
         self.start_x = self.window.width / 2 - (COLS * (CELL_SIZE + OUTLINE_WIDTH)) / 2
         self.start_y = self.window.height - (ROWS * (CELL_SIZE + OUTLINE_WIDTH)) - (CELL_SIZE / 2)
+        
         self.shape_center_x = 0
         self.shape_center_y = 0
+        
         self.can_place_shape = True
         self.is_game_over = False
+
+        self.combo = 0
         self.combo_moves_left = COMBO_MOVES
+        self.combo_booster_active = False
+        self.combo_booster_moves_left = 0
+
+        self.score = 0
+        self.score_booster_active = False
+        self.score_booster_moves_left = 0
 
         if os.path.exists("data.json"):
             with open("data.json", "r") as file:
@@ -36,14 +48,58 @@ class Game(arcade.gui.UIView):
 
         self.tiles_to_destroy: list[tuple[int, int]] = []
 
-        self.score = 0
-        self.combo = 0
-        self.last_combo = time.perf_counter()
-
         self.anchor = self.add_widget(arcade.gui.UIAnchorLayout())
 
         with open("settings.json", "r") as file:
             self.settings_dict = json.load(file)
+
+    def undo_move(self):
+        if self.score >= POWER_UPS["undo_move"]:
+            self.score -= POWER_UPS["undo_move"]
+        else:
+            return
+
+        if self.state_before:
+            self.tile_grid, self.shape_to_place, self.next_shape_to_place, self.shape_color, self.next_shape_color, self.score, self.combo, self.combo_moves_left = self.state_before.pop(-1)
+            self.shape_data = SHAPES[self.shape_to_place]
+
+        for row in range(ROWS):
+            for col in range(COLS):
+                color = self.tile_grid[row][col]
+                self.sprite_grid[row][col].color = color if color else arcade.color.GRAY
+                self.sprite_grid[row][col].original_color = color if color else arcade.color.GRAY
+
+    def clear_screen(self):
+        if self.score >= POWER_UPS["clear_screen"]:
+            self.score -= POWER_UPS["clear_screen"]
+        else:
+            return
+        
+        self.state_before = []
+        for row in range(ROWS):
+            for col in range(COLS):
+                if self.tile_grid[row][col]:
+                    self.tiles_to_destroy.append((row, col))
+
+        break_sound.play()
+
+    def combo_booster(self):
+        if self.score >= POWER_UPS["combo_booster"]:
+            self.score -= POWER_UPS["combo_booster"]
+        else:
+            return
+        
+        self.combo_booster_active = True
+        self.combo_booster_moves_left = 6
+
+    def score_booster(self):
+        if self.score >= POWER_UPS["score_booster"]:
+            self.score -= POWER_UPS["score_booster"]
+        else:
+            return
+        
+        self.score_booster_active = True
+        self.score_booster_moves_left = 6
 
     def main_exit(self):
         self.window.set_mouse_visible(True)
@@ -67,6 +123,12 @@ class Game(arcade.gui.UIView):
         self.score_label = self.score_box.add(arcade.gui.UILabel(text="Score: 0", font_name="Roboto", font_size=24))
         self.high_score_label = self.score_box.add(arcade.gui.UILabel(text=f"High Score: {self.high_score}", font_name="Roboto", font_size=24))
 
+        self.power_up_label = self.anchor.add(arcade.gui.UILabel(text=f'''{POWER_UPS["undo_move"]} Score - Undo Move (1 to activate)
+{POWER_UPS["combo_booster"]} Score - Combo Booster (2 to activate)
+{POWER_UPS["score_booster"]} Score - Score Booster (3 to activate)
+{POWER_UPS["clear_screen"]} Score - Clear Screen (4 to activate)
+''', font_size=14, multiline=True), anchor_x="right", anchor_y="bottom")
+
         self.back_button = arcade.gui.UITextureButton(texture=button_texture, texture_hovered=button_hovered_texture, text='<--', style=button_style, width=100, height=50)
         self.back_button.on_click = lambda e: self.main_exit()
         self.anchor.add(self.back_button, anchor_x="left", anchor_y="top", align_x=5, align_y=-5)
@@ -87,6 +149,9 @@ class Game(arcade.gui.UIView):
             self.main_exit()
 
     def on_mouse_motion(self, x, y, dx, dy):
+        if self.is_game_over:
+            return
+        
         grid_col = int((x - self.start_x + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
         grid_row = int((y - self.start_y + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
 
@@ -184,8 +249,21 @@ class Game(arcade.gui.UIView):
                 tile.color = arcade.color.GRAY
                 tile.original_color = arcade.color.GRAY
                 tile.scale = (1, 1)
+                
                 self.tile_grid[row][col] = 0
                 self.tiles_to_destroy.remove((row, col))
+
+                if self.combo_booster_active:
+                    combo_score = (25 * self.combo)
+                else:
+                    combo_score = (10 * self.combo)
+
+                if self.score_booster_active:
+                    base_score = 50
+                else:
+                    base_score = 25
+
+                self.score += (base_score + combo_score)
 
     def check_game_over(self):
         for grid_row in range(ROWS):
@@ -224,8 +302,19 @@ class Game(arcade.gui.UIView):
     def on_key_press(self, symbol: int, modifiers: int) -> bool | None:
         if symbol == arcade.key.ESCAPE:
             self.main_exit()
+        elif symbol == arcade.key.KEY_1:
+            self.undo_move()
+        elif symbol == arcade.key.KEY_2:
+            self.combo_booster()
+        elif symbol == arcade.key.KEY_3:
+            self.score_booster()
+        elif symbol == arcade.key.KEY_4:
+            self.clear_screen()
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int) -> bool | None:
+        if self.is_game_over:
+            return
+        
         grid_col = int((x - self.start_x + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
         grid_row = int((y - self.start_y + (CELL_SIZE / 2)) // (CELL_SIZE + OUTLINE_WIDTH))
 
@@ -233,27 +322,42 @@ class Game(arcade.gui.UIView):
             if self.settings_dict.get("sfx", True):
                 click_sound.play(volume=self.settings_dict.get("sfx_volume", 50) / 100)
 
+            self.state_before.append([copy.deepcopy(self.tile_grid), self.shape_to_place, self.next_shape_to_place, self.shape_color, self.next_shape_color, self.score, self.combo, self.combo_moves_left])
+            if len(self.state_before) > 3:
+                self.state_before.pop(0)
+
             for offset_col, offset_row in self.shape_data:
                 tile_col = grid_col + offset_col
                 tile_row = grid_row + offset_row
 
-                self.tile_grid[tile_row][tile_col] = 1
+                self.tile_grid[tile_row][tile_col] = self.shape_color
                 self.sprite_grid[tile_row][tile_col].color = self.shape_color
                 self.sprite_grid[tile_row][tile_col].original_color = self.shape_color
-
-                self.score += 5
+                
+                if self.score_booster_active:
+                    self.score += 10
+                else:
+                    self.score += 5
 
             for row, col in self.collided_tile_positions:
                 self.tiles_to_destroy.append((row, col))
 
-                self.score += 25 + (10 * self.combo)
-
+            if self.collided_tile_positions:
                 break_sound.play()
+
+            if self.score_booster_active:
+                self.score_booster_moves_left -= 1
+                if self.score_booster_moves_left <= 0:
+                    self.score_booster_active = False
+
+            if self.combo_booster_active:
+                self.combo_booster_moves_left -= 1
+                if self.combo_booster_moves_left <= 0:
+                    self.combo_booster_active = False
 
             if self.collided_tile_positions:
                 self.combo += 1
                 self.combo_moves_left = COMBO_MOVES
-                self.last_combo = time.perf_counter()
             else:
                 self.combo_moves_left -= 1
                 

@@ -1,8 +1,14 @@
 import pyglet
 
+pyglet.options['shadow_window'] = False  # Fix double window issue on Wayland
 pyglet.options.debug_gl = False
 
-import logging, datetime, os, json, sys, arcade
+import logging, datetime, os, json, sys, arcade, platform
+
+# Set up paths BEFORE importing modules that load assets
+script_dir = os.path.dirname(os.path.abspath(__file__))
+pyglet.resource.path.append(script_dir)
+pyglet.font.add_directory(os.path.join(script_dir, 'assets', 'fonts'))
 
 from utils.utils import get_closest_resolution, print_debug_info, on_exception
 from utils.constants import log_dir, menu_background_color
@@ -11,9 +17,6 @@ from utils.preload import theme_sound # needed for preload
 from arcade.experimental.controller_window import ControllerWindow
 
 sys.excepthook = on_exception
-
-pyglet.resource.path.append(os.getcwd())
-pyglet.font.add_directory('./assets/fonts')
 
 __builtins__.print = lambda *args, **kwargs: logging.debug(" ".join(map(str, args)))
 
@@ -44,6 +47,13 @@ if os.path.exists('settings.json'):
     else:
         antialiasing = 0
 
+    # Wayland workaround (can be overridden with environment variable)
+    if (platform.system() == "Linux" and
+        os.environ.get("WAYLAND_DISPLAY") and
+        not os.environ.get("ARCADE_FORCE_MSAA")):
+        logging.info("Wayland detected - disabling MSAA (set ARCADE_FORCE_MSAA=1 to override)")
+        antialiasing = 0
+
     fullscreen = settings['window_mode'] == 'Fullscreen'
     style = arcade.Window.WINDOW_STYLE_BORDERLESS if settings['window_mode'] == 'borderless' else arcade.Window.WINDOW_STYLE_DEFAULT
     vsync = settings['vsync']
@@ -51,6 +61,14 @@ if os.path.exists('settings.json'):
 else:
     resolution = get_closest_resolution()
     antialiasing = 4
+
+    # Wayland workaround (can be overridden with environment variable)
+    if (platform.system() == "Linux" and
+        os.environ.get("WAYLAND_DISPLAY") and
+        not os.environ.get("ARCADE_FORCE_MSAA")):
+        logging.info("Wayland detected - disabling MSAA (set ARCADE_FORCE_MSAA=1 to override)")
+        antialiasing = 0
+
     fullscreen = False
     style = arcade.Window.WINDOW_STYLE_DEFAULT
     vsync = True
@@ -73,7 +91,11 @@ else:
 if settings.get("music", True):
     theme_sound.play(volume=settings.get("music_volume", 50) / 100, loop=True)
 
-window = ControllerWindow(width=resolution[0], height=resolution[1], title='ShatterStack', samples=antialiasing, antialiasing=antialiasing > 0, fullscreen=fullscreen, vsync=vsync, resizable=False, style=style)
+try:
+    window = ControllerWindow(width=resolution[0], height=resolution[1], title='ShatterStack', samples=antialiasing, antialiasing=antialiasing > 0, fullscreen=fullscreen, vsync=vsync, resizable=False, style=style, visible=False)
+except (FileNotFoundError, PermissionError) as e:
+    logging.warning(f"Controller support unavailable: {e}. Falling back to regular window.")
+    window = arcade.Window(width=resolution[0], height=resolution[1], title='ShatterStack', samples=antialiasing, antialiasing=antialiasing > 0, fullscreen=fullscreen, vsync=vsync, resizable=False, style=style, visible=False)
 
 if vsync:
     window.set_vsync(True)
@@ -97,6 +119,9 @@ print_debug_info()
 main = Main()
 
 window.show_view(main)
+
+# Make window visible after all setup is complete (helps prevent double window on Wayland)
+window.set_visible(True)
 
 logging.debug('Game started.')
 

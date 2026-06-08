@@ -14,8 +14,23 @@ jobs:
           architecture: x64
           cache: pip
           cache-dependency-path: "**/requirements*.txt"
-      - name: Update package lists and install patchelf
-        run: sudo apt update && sudo apt install -y patchelf
+      - name: Update package lists and install patchelf and ccache
+        run: sudo apt update && sudo apt install -y patchelf ccache
+      - name: Configure ccache
+        run: |
+          ccache --set-config=max_size=1G
+          ccache --set-config=compression=true
+          echo "CC=ccache gcc" >> $GITHUB_ENV
+          echo "CXX=ccache g++" >> $GITHUB_ENV
+          echo "CCACHE_DIR=$HOME/.cache/ccache" >> $GITHUB_ENV
+      - name: Restore ccache
+        uses: https://data.forgejo.org/actions/cache@v3
+        with:
+          path: ~/.cache/ccache
+          key: ccache-linux-py3.11-${{ github.sha }}
+          restore-keys: |
+            ccache-linux-py3.11-
+            ccache-linux-
       - name: Install Python dependencies
         run: pip install -r requirements.txt nuitka
       - name: Restore Nuitka cache
@@ -37,10 +52,12 @@ jobs:
             --output-dir=build \
             --disable-plugins=tk-inter,multiprocessing,gi \
             run.py
+      - name: Print ccache stats
+        run: ccache --show-stats
       - name: Zip
         run: |
           BUILD_DIR=$(find . -maxdepth 3 -type d -name "*.dist" | head -n 1)
-          zip -r simulator_games_linux.zip "$BUILD_DIR"
+          zip -r shatterstack_linux.zip "$BUILD_DIR"
       - name: Release
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -58,9 +75,9 @@ jobs:
           RELEASE_ID=$(curl -sf -X POST \
             -H "Authorization: token $TOKEN" -H "Content-Type: application/json" \
             "$API/repos/$REPO/releases" \
-            -d "{\"tag_name\":\"latest\",\"name\":\"Latest Release\",\"draft\":false,\"prerelease\":false,\"body\":\"Automated build for commit ${{ github.sha }}\n\n## Downloads\n- Linux: \`simulator_games_linux.zip\`\n- Windows: Sorry, could not get builds working, please use Python\"}" \
+            -d "{\"tag_name\":\"latest\",\"name\":\"Latest Release\",\"draft\":false,\"prerelease\":false,\"body\":\"Automated build for commit ${{ github.sha }}\n\n## Downloads\n- Linux: \`shatterstack_linux.zip\`\n- Windows: Sorry, could not get builds working, please use Python\"}" \
             | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
           curl -sf -X POST \
             -H "Authorization: token $TOKEN" -H "Content-Type: application/octet-stream" \
-            "$API/repos/$REPO/releases/$RELEASE_ID/assets?name=simulator_games_linux.zip" \
-            --data-binary "@simulator_games_linux.zip"
+            "$API/repos/$REPO/releases/$RELEASE_ID/assets?name=wizard_vs_irs_linux.zip" \
+            --data-binary "@shatterstack_linux.zip"

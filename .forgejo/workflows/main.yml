@@ -54,7 +54,17 @@ jobs:
         run: ccache --show-stats
       - name: Zip
         run: |
-          zip -j shatterstack_linux.zip build/ShatterStack.bin
+          set -euo pipefail
+          # The onefile artifact has no extension; Nuitka only keeps a .bin copy
+          # inside the intermediate <script>.dist directory, which is not shipped.
+          BIN="build/ShatterStack"
+          if [ ! -f "$BIN" ]; then
+            BIN=$(find build -maxdepth 1 -type f \( -name "ShatterStack" -o -name "ShatterStack.bin" \) | head -n 1)
+          fi
+          test -n "$BIN" && test -f "$BIN"
+          [ "$BIN" = "build/ShatterStack" ] || mv -- "$BIN" "build/ShatterStack"
+          zip -j shatterstack_linux.zip "build/ShatterStack"
+          rm -rf build/*.dist build/*.build
       - name: Release
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
